@@ -1,3 +1,5 @@
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE UndecidableInstances #-}
 module Main where
 
 import Lib
@@ -26,10 +28,12 @@ setup w = void $ do
     UI.addStyleSheet w "buttons.css"
     addStyleSheetExt w "https://cdn.datatables.net/1.11.3/css/jquery.dataTables.min.css"
 
-    buttons <- mkButtons
-    let myTab = mkTable [string "H1", string "H2"]
-                     [ [string "R1C1", string "R1C2"]
-                     , [string "R2C1", string "R2C2"] ] # set UI.id_ "example" # set UI.class_ "display"  
+    buttons <- mkButtons 
+    let c = set text
+        n v = set style [("text-align","right")] . c v 
+        myTab = mkTable [c "H1", c "H2"]
+                     [  [c "R1C1", n "R1C2"]
+                     ,  [c "R2C1", n "R2C2"] ] # set UI.id_ "example" # set UI.class_ "display"  
                    
     dgScript <- mkElement  "Script" # set UI.text "$(document).ready(function() { $('#example').DataTable(); } );" 
     getBody w #+
@@ -97,14 +101,14 @@ addStyleSheetExt w filename = void $ do
             # set (attr "href") (filename)
     getHead w #+ [element el]  
 
-mkTable    :: [UI Element]-> [[UI Element]] -> UI Element
+mkTable :: [UI Element -> UI Element]-> [[ UI Element -> UI Element ]] -> UI Element
 mkTable mhead mrows = do
-        rowHeader <- wrap "tr" =<< mapM (\entry -> wrap "th" [entry] ) =<< sequence mhead
+        rowHeader <- wrap "tr" =<< mapM (\entry -> mkElement "th" # entry ) mhead
 
-        rows0 <- mapM sequence mrows
+        -- rows0 <- mapM sequence mrows
 
-        rows  <- forM rows0 $ \row0 -> do
-            wrap "tr" =<< forM row0 (\entry -> wrap "td" [entry])
+        rows  <- forM mrows $ \row0 -> do
+            wrap "tr" =<< forM row0 (\entry -> mkElement "td" # entry )
 
         th <- wrap "thead" [rowHeader]    
         tb <- wrap "tbody" rows
